@@ -1,0 +1,790 @@
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #f5f6f8;
+    color: #222;
+}
+
+
+.widget-container {
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.page-header {
+    margin-bottom: 20px;
+}
+
+
+.page-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+
+.page-subtitle {
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   TABS
+========================================================= */
+
+.tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #d9dde3;
+    margin-bottom: 20px;
+}
+
+
+.tab-button {
+    border: none;
+    background: transparent;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+
+.tab-button:hover {
+    color: #111827;
+}
+
+
+.tab-button.active {
+    color: #111827;
+    border-bottom-color: #2563eb;
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   TAB CONTENT
+========================================================= */
+
+.tab-content {
+    display: none;
+}
+
+
+.tab-content.active {
+    display: block;
+}
+
+
+/* =========================================================
+   SECTION HEADER
+========================================================= */
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+
+.section-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+
+.record-count {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   TABLE
+========================================================= */
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    background: #ffffff;
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+}
+
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+
+th {
+    background: #f8fafc;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    padding: 13px 14px;
+    border-bottom: 1px solid #e1e5ea;
+    white-space: nowrap;
+}
+
+
+td {
+    padding: 13px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid #edf0f3;
+    vertical-align: middle;
+}
+
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+
+tbody tr:hover {
+    background: #fafbfc;
+}
+
+/* =========================================================
+   NEW BOOKINGS — GROUP HEADERS
+========================================================= */
+
+.group-row td {
+    padding: 9px 14px;
+    background: #eef2f8;
+    border-top: 1px solid #d9e0eb;
+    border-bottom: 1px solid #d9e0eb;
+    color: #26354a;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.group-label {
+    display: inline-block;
+    color: #26354a;
+    font-weight: 600;
+}
+.grouped-table thead th {
+    background: #e3e8f0;
+    color: #26354a;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 13px 14px;
+    border-bottom: 2px solid #c8d1df;
+}
+.grouped-table thead th,
+#planApproveTab table thead th {
+    background: #e3e8f0;
+    color: #26354a;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 13px 14px;
+    border-bottom: 2px solid #c8d1df;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #eef2f7;
+    color: #4b5563;
+}
+
+
+.status-ongoing {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+
+/* =========================================================
+   CONFIRM BUTTON
+========================================================= */
+
+.confirm-button {
+    border: none;
+    background: #2563eb;
+    color: white;
+    padding: 8px 13px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+
+.confirm-button:hover {
+    background: #1d4ed8;
+}
+
+
+.confirm-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.loading {
+    padding: 40px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.empty-state {
+    padding: 50px 20px;
+    text-align: center;
+    color: #6b7280;
+}
+
+
+.empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
+}
+
+
+.empty-message {
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.error-state {
+    padding: 25px;
+    text-align: center;
+    color: #b91c1c;
+    background: #fef2f2;
+    border-radius: 6px;
+    margin: 10px;
+}
+
+
+/* =========================================================
+   PLACEHOLDER
+========================================================= */
+
+.placeholder {
+    background: white;
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+    padding: 60px 20px;
+    text-align: center;
+    color: #6b7280;
+}
+/* =========================================================
+   BLUEPRINT ACTION BUTTONS
+========================================================= */
+
+.blueprint-button {
+    border: none;
+    background: #2563eb;
+    color: #ffffff;
+    padding: 8px 12px;
+    margin: 2px 4px 2px 0;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+
+.blueprint-button:hover {
+    background: #1d4ed8;
+}
+
+
+.no-actions {
+    color: #9ca3af;
+    font-size: 12px;
+    white-space: nowrap;
+}
+/* =========================================================
+   DURING ACTION MODAL
+========================================================= */
+
+.during-action-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+
+.during-action-overlay {
+    position: absolute;
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.45);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    overflow: hidden;
+}
+
+.during-action-dialog {
+    width: min(520px, 100%);
+    max-height: calc(100vh - 48px);
+
+    background: white;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.2);
+
+    display: flex;
+    flex-direction: column;
+
+    overflow: hidden;
+}
+
+.during-action-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    padding: 20px 22px;
+
+    border-bottom: 1px solid #e5e7eb;
+
+    flex-shrink: 0;
+}
+
+.during-action-header h2 {
+    margin: 0;
+}
+
+.during-action-subtitle {
+    margin-top: 4px;
+
+    font-size: 13px;
+
+    color: #6b7280;
+}
+
+.during-action-close {
+    border: none;
+    background: transparent;
+
+    font-size: 26px;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   SCROLLABLE FIELD AREA
+========================================================= */
+
+.during-action-body {
+    padding: 22px;
+
+    overflow-y: auto;
+
+    flex: 1;
+    min-height: 0;
+}
+
+
+/* =========================================================
+   FIELD
+========================================================= */
+
+.during-action-field {
+    margin-bottom: 18px;
+}
+
+.during-action-field label {
+    display: block;
+
+    margin-bottom: 7px;
+
+    font-weight: 600;
+}
+
+.during-action-input {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 10px 12px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 6px;
+
+    font-size: 14px;
+}
+
+.required {
+    color: #dc2626;
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.during-action-footer {
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    padding: 16px 22px;
+
+    border-top: 1px solid #e5e7eb;
+
+    flex-shrink: 0;
+
+    background: white;
+}
+
+.during-action-cancel,
+.during-action-submit {
+    padding: 9px 16px;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+}
+
+.during-action-cancel {
+    border: 1px solid #d1d5db;
+
+    background: white;
+}
+
+.during-action-submit {
+    border: none;
+
+    background: #2563eb;
+
+    color: white;
+}
+.choice-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.choice-option:hover {
+    background: #f9fafb;
+}
+
+.choice-option input[type="radio"] {
+    cursor: pointer;
+}
+
+/* =========================================================
+   TOAST NOTIFICATIONS
+========================================================= */
+
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    min-width: 260px;
+    max-width: 360px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    background: #111827;
+    color: white;
+    font-size: 14px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success { background: #15803d; }
+.toast-error { background: #b91c1c; }
+.toast-info { background: #1f2937; }
+
+
+/* =========================================================
+   LOADING OVERLAY
+========================================================= */
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.loading-overlay.visible {
+    display: flex;
+}
+
+.loading-overlay-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #d1d5db;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-overlay-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+.gate-message {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border: 1.5px solid #dc2626;
+    border-radius: 6px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.during-action-dialog.has-subform {
+    width: min(900px, 100%);
+}
+
+.subform-wrapper {
+    margin-top: 4px;
+}
+
+.subform-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    border: 1px solid #e1e5ea;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.subform-table th {
+    background: #f8fafc;
+    color: #4b5563;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid #e1e5ea;
+}
+
+.subform-row td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #edf0f3;
+    vertical-align: middle;
+}
+
+.subform-row:last-child td {
+    border-bottom: none;
+}
+
+.subform-cell-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 9px;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+.subform-cell-input:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+.subform-remove-button {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.subform-remove-button:hover {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.subform-add-button {
+    border: 1px dashed #d1d5db;
+    background: transparent;
+    color: #2563eb;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.subform-add-button:hover {
+    background: #f8fafc;
+    border-color: #2563eb;
+}
+/* =========================================================
+   SEARCHABLE LOOKUP COMBOBOX
+========================================================= */
+
+.lookup-combo {
+    position: relative;
+}
+
+.lookup-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 9px;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+.lookup-search-input:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+.lookup-dropdown-portal {
+    display: none;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    z-index: 10010;
+}
+
+.lookup-dropdown-portal.open {
+    display: block;
+}
+
+.lookup-option {
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.lookup-option:hover {
+    background: #f8fafc;
+}
+
+.lookup-option-empty {
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #9ca3af;
+}
+.info-modal-dialog {
+    width: min(500px, 100%);
+}
+
+.info-modal-message {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #374151;
+}
+/* =========================================================
+   HALF-WIDTH DURING ACTION FIELDS
+========================================================= */
+
+.during-action-field-half {
+    display: inline-block;
+    width: calc(50% - 10px);
+    vertical-align: top;
+    margin-right: 20px;
+}
+
+.during-action-field-half + .during-action-field-half {
+    margin-right: 0;
+}
+
+.during-action-field-half + .during-action-field:not(.during-action-field-half) {
+    display: block;
+    clear: both;
+}
