@@ -46,7 +46,6 @@ function getRecordById(reportName, recordId) {
     const config = {
         reportName: reportName,
         id: recordId,
-        field_config: "all"
     };
 
     return ZOHO.CREATOR.API.getRecordById(config)
@@ -165,4 +164,31 @@ function getAllReportRecords(reportName, criteria) {
     }
 
     return loadPage(1, []);
+}
+const BLUEPRINT_STAGE_ALIASES = {
+    Ongoingg: "Ongoing",
+    Dispatchedd: "Dispatched"
+};
+
+function normalizeBlueprintStage(stage) {
+    return BLUEPRINT_STAGE_ALIASES[stage] || stage;
+}
+
+function normalizeBlueprintState(record) {
+    const rawStage = record["Blueprint.Current_Stage"]
+        ? record["Blueprint.Current_Stage"].display_value
+        : null;
+
+    record._rawBlueprintStage = rawStage;
+    record._blueprintStage = normalizeBlueprintStage(rawStage);
+
+    record._blueprintName = record["Blueprint.Name"]
+        ? record["Blueprint.Name"].display_value.toLowerCase().replace(/\s+/g, "_")
+        : null;
+
+    record._blueprintStatus = record["Blueprint.Status"]
+        ? record["Blueprint.Status"].display_value
+        : null;
+
+    return record;
 }

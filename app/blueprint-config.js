@@ -45,7 +45,8 @@ const DISPATCH_CONFIRMATION_DURING_ACTION = {
         lookup("Dispatcher", "Dispatcher", "Dispatcher", "half"),
         lookup("Driver", "Driver", "Driver", "half"),
         { field: "Abrupt_Move", label: "Is this an abrupt move?", type: "select", options: ["No", "Yes"], defaultValue: "No" },
-        { field: "Reason_for_abrupt", label: "Reason for abrupt move", type: "select", options: ["Abrupt due to client issues", "Abrupt due to sales side issues"], required: true, showWhen: { field: "Abrupt_Move", equals: "Yes" } },
+        { field: "Reason_for_abrupt", label: "Reason for abrupt move", type: "select", options: ["Abrupt due to client issues", "Abrupt due to sales side issues"], 
+             requiredWhen:{field:"Abrupt_Move",equals:"Yes"}, showWhen: { field: "Abrupt_Move", equals: "Yes" } },
         {
             field: "Assigned_Labour_Subform", label: "Assigned Labour", type: "subform",
             columns: [
@@ -53,11 +54,14 @@ const DISPATCH_CONFIRMATION_DURING_ACTION = {
                 { field: "Role", label: "Role", type: "select", options: ["Team Leader", "Assistant TL", "Mover","Driver"] }
             ]
         }
-    ]
+    ],
+    rules:{
+    addLookupToSubform:{sourceField:"Driver",targetSubform:"Assigned_Labour_Subform",
+        valueColumn:"Name",
+        extraValues:{Role:"Driver"}
+    }
+}
 };
-
-
-
 const BLUEPRINT_CONFIG = {
 
     job_stage: {
@@ -66,7 +70,7 @@ const BLUEPRINT_CONFIG = {
         {label: "Cancelled",linkName: "Cancelled"},
        
     ],
-        Dispatchedd: [
+        Dispatched: [
 
     {
         label: "Confirm Started",
@@ -157,9 +161,9 @@ const BLUEPRINT_CONFIG = {
 
 ],
     "Long Distance Continuing": [
-            {label: "Started", linkName: "Started2" }
+            {label: "Confirm Started", linkName: "Started2" }
         ],
-        Ongoingg: [
+        Ongoing: [
 
             {
                 label: "Mark Move done",
@@ -262,26 +266,31 @@ const BLUEPRINT_CONFIG = {
                     {
                         label: "Long Distance Continuing",
                         linkName: "Confirm_Long_Distance_Con"
+                    },
+                    {
+                        label: "Unsure about completion",
+                        linkName: "Unsure_About_Completion"
                     }
 
                 ]
-            }
-
+            },
         ],
         Continuing: [
-        { label: "Ongoing", linkName: "Ongoing" }
+        { label: "Ongoing", linkName: "Started2" }
     ],
 
     "Spill Over": [
-        { label: "Ongoing", linkName: "Ongoing" }
+        { label: "Ongoing", linkName: "Started2" }
     ],
 
     "International in Transit": [
-        { label: "Ongoing", linkName: "Ongoing" }
-    ]
+        { label: "Ongoing", linkName: "Started2" }
+    ],
+    "Updated to Unsure": [
+        { label: "Update", linkName: "Started2" }
+    ],
 
     },
-    
     confirm_booking: {
 
     Pending: [

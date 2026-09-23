@@ -6,6 +6,7 @@
    APPLICATION START
 ========================================================= */
 let pastBookingsGateActive = false;
+let activeDuringActionContext = null;
 ZOHO.CREATOR.init()
     .then(function() {
         initializeTabs();
@@ -59,18 +60,9 @@ function loadOngoingJobs() {
 
     getReportRecords(config.reportName, config.criteria, config.pageSize)
         .then(function(records) {
+
             records.forEach(function(record) {
-                record._blueprintName = record["Blueprint.Name"]
-                    ? record["Blueprint.Name"].display_value.toLowerCase().replace(/\s+/g, "_")
-                    : null;
-
-                record._blueprintStage = record["Blueprint.Current_Stage"]
-                    ? record["Blueprint.Current_Stage"].display_value
-                    : null;
-
-                record._blueprintStatus = record["Blueprint.Status"]
-                    ? record["Blueprint.Status"].display_value
-                    : null;
+                normalizeBlueprintState(record);
             });
 
             renderOngoingJobs(records);
@@ -81,7 +73,6 @@ function loadOngoingJobs() {
             document.getElementById("ongoingCount").textContent = "Error";
         });
 }
-
 
 /* =========================================================
    RENDER CURRENT ONGOING JOBS
@@ -564,18 +555,9 @@ function loadDispatchedJobs() {
 
     getReportRecords(config.reportName, config.criteria, config.pageSize)
         .then(function(records) {
+
             records.forEach(function(record) {
-                record._blueprintName = record["Blueprint.Name"]
-                    ? record["Blueprint.Name"].display_value.toLowerCase().replace(/\s+/g, "_")
-                    : null;
-
-                record._blueprintStage = record["Blueprint.Current_Stage"]
-                    ? record["Blueprint.Current_Stage"].display_value
-                    : null;
-
-                record._blueprintStatus = record["Blueprint.Status"]
-                    ? record["Blueprint.Status"].display_value
-                    : null;
+                normalizeBlueprintState(record);
             });
 
             renderDispatchedJobs(records);
@@ -1302,6 +1284,7 @@ function buildDuringActionModal(recordId, transition, apiKey, blueprintName, con
     modal.dataset.reportName = duringAction.reportName || "All_Jobs";
     modal.dataset.apiKey = apiKey;
     modal.dataset.afterAction = transition.afterAction || "";
+    activeDuringActionContext = { recordId: recordId, transition: transition, apiKey: apiKey, blueprintName: blueprintName };
 
     document.body.appendChild(modal);
 
@@ -1712,7 +1695,76 @@ function closeDuringActionModal() {
     }
      hideLookupPortal();
 }
+function collectDuringActionData(modal, duringAction) {
+    const data = {};
+    (duringAction.fields || []).forEach(function(field) {
+        if (field.type === "subform") return;
+        const input = modal.querySelector(`[name="${field.field}"]`);
+        if (!input) return;
+        let value = input.value;
+        if (input.type === "date" && value) value = formatCreatorDate(value);
+        else if (input.type === "datetime-local" && value) {
+            const date = new Date(value);
+            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            value = String(date.getDate()).padStart(2,"0") + "-" + months[date.getMonth()] + "-" + date.getFullYear() + " " + String(date.getHours()).padStart(2,"0") + ":" + String(date.getMinutes()).padStart(2,"0") + ":00";
+        }
+        data[field.field] = value;
+    });
+    (duringAction.fields || []).filter(function(field) { return field.type === "lookup"; }).forEach(function(field) {
+        const input = modal.querySelector(`.during-action-lookup-value[name="${field.field}"]`);
+        if (input) data[field.field] = input.value;
+    });
+    (duringAction.fields || []).filter(function(field) { return field.type === "subform"; }).forEach(function(field) {
+        const wrapper = modal.querySelector(`.subform-wrapper[data-field="${field.field}"]`);
+        const rows = [];
+        if (wrapper) {
+            wrapper.querySelectorAll(".subform-row").forEach(function(tr) {
+                const rowData = {};
+                let hasValue = false;
+                tr.querySelectorAll(".subform-cell-input").forEach(function(input) {
+                    if (input.value) hasValue = true;
+                    rowData[input.dataset.column] = input.value;
+                });
+                if (hasValue) rows.push(rowData);
+            });
+        }
+        data[field.field] = rows;
+    });
+    return data;
+}
+function validateDuringActionData(modal, duringAction, data) {
+    for (const field of duringAction.fields || []) {
+        const value = data[field.field];
+        let isVisible = true;
 
+        if (field.showWhen) {
+            const controllingValue = data[field.showWhen.field];
+            isVisible = controllingValue === field.showWhen.equals;
+        }
+
+        if (field.required && isVisible && (value === undefined || value === null || String(value).trim() === "")) return `Please enter ${field.label}.`;
+
+        if (field.requiredWhen && data[field.requiredWhen.field] === field.requiredWhen.equals && (value === undefined || value === null || String(value).trim() === "")) return `Please enter ${field.label}.`;
+    }
+    return null;
+}
+function applyDuringActionRules(data, rules) {
+    if (!rules) return;
+    if (rules.addLookupToSubform) {
+        const rule = rules.addLookupToSubform;
+        const sourceValue = data[rule.sourceField];
+        if (!sourceValue) return;
+        const rows = data[rule.targetSubform] || [];
+        const exists = rows.some(function(row) { return String(row[rule.valueColumn]) === String(sourceValue); });
+        if (!exists) {
+            const row = {};
+            row[rule.valueColumn] = sourceValue;
+            Object.assign(row, rule.extraValues || {});
+            rows.push(row);
+        }
+        data[rule.targetSubform] = rows;
+    }
+}
 
 /* =========================================================
    SUBMIT DURING ACTION
@@ -1720,147 +1772,40 @@ function closeDuringActionModal() {
 
 function submitDuringAction() {
     const modal = document.getElementById("duringActionModal");
+    if (!modal || !activeDuringActionContext) return;
 
-    if (!modal) {
+    const context = activeDuringActionContext;
+    const recordId = context.recordId;
+    const transition = context.transition;
+    const duringAction = transition.duringAction;
+    const apiKey = context.apiKey;
+    const blueprintName = context.blueprintName;
+    const reportName = duringAction.reportName || "All_Jobs";
+    const afterAction = transition.afterAction || "";
+
+    const data = collectDuringActionData(modal, duringAction);
+    const validationError = validateDuringActionData(modal, duringAction, data);
+
+    if (validationError) {
+        showToast(validationError, "error");
         return;
     }
 
-    const recordId = modal.dataset.recordId;
-    const transitionName = modal.dataset.transitionName;
-    const reportName = modal.dataset.reportName;
-    const apiKey = modal.dataset.apiKey;
-    const blueprintName = modal.dataset.blueprintName;
-    const afterAction = modal.dataset.afterAction;
-    const data = {};
-
-    /* =====================================================
-       FLAT FIELDS
-    ===================================================== */
-
-    modal.querySelectorAll(".during-action-field > .during-action-input").forEach(function(input) {
-
-        let value = input.value;
-
-        /* Date fields: YYYY-MM-DD → dd-MMM-yyyy */
-        if (input.type === "date" && value) {
-            value = formatCreatorDate(value);
-        }
-
-        /* Date-time fields: datetime-local → dd-MMM-yyyy HH:mm:ss */
-        else if (input.type === "datetime-local" && value) {
-
-            const date = new Date(value);
-
-            const months = [
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-            ];
-
-            value =
-                String(date.getDate()).padStart(2, "0") + "-" +
-                months[date.getMonth()] + "-" +
-                date.getFullYear() + " " +
-                String(date.getHours()).padStart(2, "0") + ":" +
-                String(date.getMinutes()).padStart(2, "0") + ":00";
-        }
-
-        data[input.name] = value;
-    });
-
-    /* =====================================================
-       STANDALONE LOOKUP FIELDS
-    ===================================================== */
-
-    modal.querySelectorAll(".during-action-lookup-value").forEach(function(input) {
-        data[input.name] = input.value;
-    });
-
-    /* =====================================================
-       VALIDATION
-    ===================================================== */
-
-    const dispatcherInput = modal.querySelector('[name="Dispatcher"]');
-    const driverInput = modal.querySelector('[name="Driver"]');
-    const abruptMoveInput = modal.querySelector('[name="Abrupt_Move"]');
-    const reasonInput = modal.querySelector('[name="Reason_for_abrupt"]');
-
-    if (!dispatcherInput || !dispatcherInput.value) {
-        showToast("Please select a Dispatcher.", "error");
-        return;
-    }
-
-    if (!driverInput || !driverInput.value) {
-        showToast("Please select a Driver.", "error");
-        return;
-    }
-
-    if (abruptMoveInput && abruptMoveInput.value === "Yes" && (!reasonInput || !reasonInput.value)) {
-        showToast("Please select a reason for the abrupt move.", "error");
-        return;
-    }
-
-    /* =====================================================
-       SUBFORM FIELDS
-    ===================================================== */
-
-    modal.querySelectorAll(".subform-wrapper").forEach(function(wrapper) {
-        const fieldName = wrapper.dataset.field;
-        const rows = [];
-
-        wrapper.querySelectorAll(".subform-row").forEach(function(tr) {
-            const rowData = {};
-            let hasValue = false;
-
-            tr.querySelectorAll(".subform-cell-input").forEach(function(input) {
-                if (input.value) {
-                    hasValue = true;
-                }
-                rowData[input.dataset.column] = input.value;
-            });
-
-            if (hasValue) {
-                rows.push(rowData);
-            }
-        });
-
-        data[fieldName] = rows;
-    });
-
-    /* =====================================================
-       ADD DRIVER TO ASSIGNED LABOUR
-    ===================================================== */
-
-    if (driverInput && driverInput.value) {
-        const labourRows = data.Assigned_Labour_Subform || [];
-
-        const driverAlreadyAssigned = labourRows.some(function(row) {
-            return String(row.Name) === String(driverInput.value);
-        });
-
-        if (!driverAlreadyAssigned) {
-            labourRows.push({
-                Name: driverInput.value,
-                Role: "Driver"
-            });
-        }
-
-        data.Assigned_Labour_Subform = labourRows;
-    }
+    applyDuringActionRules(data, duringAction.rules);
 
     closeDuringActionModal();
     showLoadingOverlay("Updating record...");
 
     updateCreatorRecord(reportName, recordId, data)
-        .then(function() {
-            return executeBlueprintTransition(apiKey, recordId, transitionName, blueprintName);
-        })
+        .then(function() { return executeBlueprintTransition(apiKey, recordId, transition.linkName, blueprintName); })
         .then(function() {
             hideLoadingOverlay();
+            activeDuringActionContext = null;
             showToast("Transition completed successfully.", "success");
 
-            if (afterAction === "openPrepSheet") {
-                openBookingPrepSheet(recordId);
-            }
+            if (afterAction === "openPrepSheet") openBookingPrepSheet(recordId);
+            else if (afterAction === "openPlanning") openPlanning();
+            else if (afterAction === "openPrepSheetForNewRecord") openPrepSheetForNewRecord(recordId);
             else {
                 loadOngoingJobs();
                 loadBookingsToConfirm();
@@ -1874,7 +1819,6 @@ function submitDuringAction() {
             showToast(error.message || "The transition could not be completed. Please try again.", "error");
         });
 }
-
 
 /* =========================================================
    GET DISPLAY VALUE
