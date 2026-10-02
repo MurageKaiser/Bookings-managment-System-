@@ -174,6 +174,13 @@ const BLUEPRINT_CONFIG = {
                     formName: "paymentConfirmation",
 
                     fields: [
+                         {
+                            field: "Move_End_Date",
+                            label: "Move End Date",
+                            type: "date",
+                            required: true,
+                            saveAs: "Move_completion_date"
+                        },
 
                         {
                             field: "Final_Payment_Received",
@@ -300,11 +307,32 @@ const BLUEPRINT_CONFIG = {
             linkName: "Approve",
             afterAction: "openPrepSheet"
         },*/
-        {
-            label: "Approve Booking",   
-            linkName: "New_Approval_Planningg",
-            afterAction: "openPlanning"
-        },
+       {
+    label: "Approve Booking",
+    linkName: "New_Approval_Planningg",
+    afterAction: "openPlanning",
+    duringAction: {
+        type: "updateFields",
+        reportName: "Bookings_View",
+        formName: "Client Confirmation",
+
+        fields: [
+            {
+                field: "Client_called",
+                label: "Have you called the client to confirm the move details and date?",
+                type: "radio",
+                options: ["Yes", "No"],
+                required: true
+            },
+            {
+                field: "Move_start_time",
+                label: "Move Start Time",
+                type: "time",
+                required: true
+            }
+        ]
+    }
+},
 
         {
             label: "Cancelled",

@@ -1348,6 +1348,30 @@ let html = `
             </select>
         `;
     }
+    else if (field.type === "radio") {
+    html += `
+        <div class="during-action-radio-group">
+    `;
+
+    (field.options || []).forEach(function(option, index) {
+        const checked = option === field.defaultValue ? "checked" : "";
+
+        html += `
+            <label class="during-action-radio-option">
+                <input
+                    type="radio"
+                    name="${escapeHtml(field.field)}"
+                    value="${escapeHtml(option)}"
+                    ${checked}>
+                <span>${escapeHtml(option)}</span>
+            </label>
+        `;
+    });
+
+    html += `
+        </div>
+    `;
+}
     else if (field.type === "number") {
         html += `
             <input
@@ -1372,6 +1396,14 @@ let html = `
                 name="${escapeHtml(field.field)}"
                 class="during-action-input">
         `;
+    }
+    else if (field.type === "time") {
+    html += `
+        <input
+            type="time"
+            name="${escapeHtml(field.field)}"
+            class="during-action-input">
+    `;
     }
     else if (field.type === "lookup") {
         const options = (context.lookupOptionsByField && context.lookupOptionsByField[field.field]) || [];
@@ -1699,16 +1731,23 @@ function collectDuringActionData(modal, duringAction) {
     const data = {};
     (duringAction.fields || []).forEach(function(field) {
         if (field.type === "subform") return;
-        const input = modal.querySelector(`[name="${field.field}"]`);
-        if (!input) return;
-        let value = input.value;
-        if (input.type === "date" && value) value = formatCreatorDate(value);
-        else if (input.type === "datetime-local" && value) {
-            const date = new Date(value);
-            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-            value = String(date.getDate()).padStart(2,"0") + "-" + months[date.getMonth()] + "-" + date.getFullYear() + " " + String(date.getHours()).padStart(2,"0") + ":" + String(date.getMinutes()).padStart(2,"0") + ":00";
+        let value = "";
+        if (field.type === "radio") {
+            const input = modal.querySelector(`input[name="${field.field}"]:checked`);
+            value = input ? input.value : "";
+        } else {
+            const input = modal.querySelector(`[name="${field.field}"]`);
+            if (!input) return;
+            value = input.value;
+            if (input.type === "date" && value) value = formatCreatorDate(value);
+            else if (input.type === "datetime-local" && value) {
+                const date = new Date(value);
+                const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                value = String(date.getDate()).padStart(2,"0") + "-" + months[date.getMonth()] + "-" + date.getFullYear() + " " + String(date.getHours()).padStart(2,"0") + ":" + String(date.getMinutes()).padStart(2,"0") + ":00";
+            }
         }
-        data[field.field] = value;
+        const targetField = field.saveAs || field.field;
+        data[targetField] = value;
     });
     (duringAction.fields || []).filter(function(field) { return field.type === "lookup"; }).forEach(function(field) {
         const input = modal.querySelector(`.during-action-lookup-value[name="${field.field}"]`);
@@ -1734,18 +1773,46 @@ function collectDuringActionData(modal, duringAction) {
 }
 function validateDuringActionData(modal, duringAction, data) {
     for (const field of duringAction.fields || []) {
-        const value = data[field.field];
+        const dataField = field.saveAs || field.field;
+        const value = data[dataField];
+
         let isVisible = true;
 
         if (field.showWhen) {
-            const controllingValue = data[field.showWhen.field];
+            const controllingField = duringAction.fields.find(function(item) {
+                return item.field === field.showWhen.field;
+            });
+
+            const controllingDataField = controllingField
+                ? (controllingField.saveAs || controllingField.field)
+                : field.showWhen.field;
+
+            const controllingValue = data[controllingDataField];
+
             isVisible = controllingValue === field.showWhen.equals;
         }
 
-        if (field.required && isVisible && (value === undefined || value === null || String(value).trim() === "")) return `Please enter ${field.label}.`;
+        if (
+            field.required &&
+            isVisible &&
+            (value === undefined ||
+             value === null ||
+             String(value).trim() === "")
+        ) {
+            return `Please enter ${field.label}.`;
+        }
 
-        if (field.requiredWhen && data[field.requiredWhen.field] === field.requiredWhen.equals && (value === undefined || value === null || String(value).trim() === "")) return `Please enter ${field.label}.`;
+        if (
+            field.requiredWhen &&
+            data[field.requiredWhen.field] === field.requiredWhen.equals &&
+            (value === undefined ||
+             value === null ||
+             String(value).trim() === "")
+        ) {
+            return `Please enter ${field.label}.`;
+        }
     }
+
     return null;
 }
 function applyDuringActionRules(data, rules) {
@@ -1804,7 +1871,7 @@ function submitDuringAction() {
             showToast("Transition completed successfully.", "success");
 
             if (afterAction === "openPrepSheet") openBookingPrepSheet(recordId);
-            else if (afterAction === "openPlanning") openPlanning();
+            else if (afterAction === "openPlanning") openLabourPlanning(recordId);
             else if (afterAction === "openPrepSheetForNewRecord") openPrepSheetForNewRecord(recordId);
             else {
                 loadOngoingJobs();
