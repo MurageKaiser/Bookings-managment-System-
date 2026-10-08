@@ -157,7 +157,18 @@ const BLUEPRINT_CONFIG = {
 
             ]
         }
-    }
+    },
+   {label: "Postponed", linkName: "Postponed",
+                 duringAction: {
+                    type: "updateFields",
+                    reportName: "All_Jobs",
+                    formName: "Job Details",
+                    fields: [
+                        { field: "Continuing_Date1", label: "Postponed To", type: "datetime", required: true }
+                    ]
+                }
+
+            },
 
 ],
     "Long Distance Continuing": [
@@ -309,7 +320,7 @@ const BLUEPRINT_CONFIG = {
         },*/
        {
     label: "Approve Booking",
-    linkName: "New_Approval_Planningg",
+    linkName: "Approve_booking",
     afterAction: "openPlanning",
     duringAction: {
         type: "updateFields",

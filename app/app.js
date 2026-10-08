@@ -7,7 +7,33 @@
 ========================================================= */
 let pastBookingsGateActive = false;
 let activeDuringActionContext = null;
+let CURRENT_ENVIRONMENT = null;
+async function initializeEnvironment() {
+
+    const initParams =
+        await ZOHO.CREATOR.UTIL.getInitParams();
+
+    console.log("Creator init params:", initParams);
+
+    if (
+        initParams &&
+        initParams.envUrlFragment === "/environment/development"
+    ) {
+        CURRENT_ENVIRONMENT = "development";
+    }
+    else {
+        CURRENT_ENVIRONMENT = "production";
+    }
+
+    console.log(
+        "Bookings Widget environment:",
+        CURRENT_ENVIRONMENT
+    );
+}
 ZOHO.CREATOR.init()
+    .then(function() {
+        return initializeEnvironment();
+    })
     .then(function() {
         initializeTabs();
         loadOngoingJobs();
@@ -26,28 +52,36 @@ ZOHO.CREATOR.init()
 /* =========================================================
    TAB HANDLING
 ========================================================= */
+function activateTab(targetTab) {
+    document.querySelectorAll(".tab-button").forEach(function(tabButton) {
+        tabButton.classList.toggle("active", tabButton.getAttribute("data-tab") === targetTab);
+    });
+
+    document.querySelectorAll(".tab-content").forEach(function(tabContent) {
+        tabContent.classList.toggle("active", tabContent.id === targetTab);
+    });
+}
+
 function initializeTabs() {
     document.querySelectorAll(".tab-button").forEach(function(button) {
         button.addEventListener("click", function() {
             const targetTab = button.getAttribute("data-tab");
+            const previousState = getGateState();
 
-            document.querySelectorAll(".tab-button").forEach(function(tabButton) {
-                tabButton.classList.remove("active");
+            activateTab(targetTab);
+
+            /* Re-check on every click so the window boundaries take effect without a reload */
+            refreshGates().then(function() {
+                if (getGateState() !== previousState) {
+                    loadOngoingJobs();
+                    loadBookingsToConfirm();
+                    loadNotStartedJobs();
+                    loadDispatchedJobs();
+                    return; /* loaders show the modal after re-rendering */
+                }
+
+                showTabGateModalIfNeeded(targetTab);
             });
-
-            document.querySelectorAll(".tab-content").forEach(function(tabContent) {
-                tabContent.classList.remove("active");
-            });
-
-            button.classList.add("active");
-            document.getElementById(targetTab).classList.add("active");
-
-            if (targetTab === "confirmBookingsTab" && pastBookingsGateActive) {
-                showInfoModal(
-                    "Past Bookings Require Attention",
-                    "Kindly attend to the Past bookings to access new bookings."
-                );
-            }
         });
     });
 }
@@ -58,14 +92,19 @@ function initializeTabs() {
 function loadOngoingJobs() {
     const config = CONFIG.ongoingJobs;
 
-    getReportRecords(config.reportName, config.criteria, config.pageSize)
-        .then(function(records) {
+    Promise.all([
+        getReportRecords(config.reportName, config.criteria, config.pageSize),
+        refreshGates()
+    ])
+        .then(function(results) {
+            const records = results[0];
 
             records.forEach(function(record) {
                 normalizeBlueprintState(record);
             });
 
             renderOngoingJobs(records);
+            showActiveTabGateModal();
         })
         .catch(function(error) {
             console.error("Failed to load ongoing jobs:", error);
@@ -156,7 +195,7 @@ function renderOngoingJobs(records) {
 
         html += `
             <td>
-                ${renderBlueprintActions(record)}
+           ${renderTabActions(record, "ongoingJobsTab")}
             </td>
         `;
 
@@ -181,7 +220,8 @@ function loadBookingsToConfirm() {
 
     Promise.all([
         getReportRecords(config.reportName, config.criteria, config.pageSize),
-        shouldGateNewBookings()
+        shouldGateNewBookings(),
+        refreshGates()
     ])
         .then(function(results) {
             const records = results[0];
@@ -207,16 +247,7 @@ function loadBookingsToConfirm() {
 
             renderBookingsToConfirm(records, ongoingGate, pastBookingsGateActive);
 
-            const newBookingsTab = document.getElementById("confirmBookingsTab");
-
-            if (newBookingsTab &&
-                newBookingsTab.classList.contains("active") &&
-                pastBookingsGateActive) {
-                showInfoModal(
-                    "Past Bookings Require Attention",
-                    "Kindly attend to the Past bookings to access new bookings."
-                );
-            }
+            showActiveTabGateModal();
         })
         .catch(function(error) {
             console.error("Failed to load bookings:", error);
@@ -224,7 +255,6 @@ function loadBookingsToConfirm() {
             document.getElementById("confirmCount").textContent = "Error";
         });
 }
-
 
 /* =========================================================
    BOOKING DATE GROUPING HELPERS
@@ -407,13 +437,17 @@ function renderBookingsToConfirm(records, ongoingGate, pastGate) {
                 html += `<td>${escapeHtml(value)}</td>`;
             });
 
-            html += `
+                        html += `
         <td>
-            ${ongoingGate
-                ? '<span class="gate-message">Update Ongoing Jobs to access new bookings</span>'
-                : pastGate && record._bookingGroup !== "Past"
-                    ? '<span class="gate-message">Attend to Past bookings first</span>'
-                    : renderBlueprintActions(record)}
+            ${notStartedGateActive
+                ? '<span class="gate-message">Update Not Started jobs to continue</span>'
+                : dispatchedGateActive
+                    ? '<span class="gate-message">Update Dispatched jobs to continue</span>'
+                    : ongoingGate
+                        ? '<span class="gate-message">Update Ongoing Jobs to access new bookings</span>'
+                        : pastGate && record._bookingGroup !== "Past"
+                            ? '<span class="gate-message">Attend to Past bookings first</span>'
+                            : renderBlueprintActions(record)}
         </td>
     `;
 
@@ -438,8 +472,13 @@ function renderBookingsToConfirm(records, ongoingGate, pastGate) {
 function loadNotStartedJobs() {
     const config = CONFIG.notStartedJobs;
 
-    getReportRecords(config.reportName, config.criteria, config.pageSize)
-        .then(function(records) {
+    Promise.all([
+        getReportRecords(config.reportName, config.criteria, config.pageSize),
+        refreshGates()
+    ])
+        .then(function(results) {
+            const records = results[0];
+
             records.forEach(function(record) {
                 record._blueprintName = record["Blueprint.Name"]
                     ? record["Blueprint.Name"].display_value.toLowerCase().replace(/\s+/g, "_")
@@ -455,6 +494,7 @@ function loadNotStartedJobs() {
             });
 
             renderNotStartedJobs(records);
+            showActiveTabGateModal();
         })
         .catch(function(error) {
             console.error("Failed to load not started jobs:", error);
@@ -535,7 +575,7 @@ function renderNotStartedJobs(records) {
 
         html += `
             <td>
-                ${renderBlueprintActions(record)}
+                ${renderTabActions(record, "planApproveTab")}
             </td>
         `;
 
@@ -553,14 +593,19 @@ function renderNotStartedJobs(records) {
 function loadDispatchedJobs() {
     const config = CONFIG.dispatchedJobs;
 
-    getReportRecords(config.reportName, config.criteria, config.pageSize)
-        .then(function(records) {
+    Promise.all([
+        getReportRecords(config.reportName, config.criteria, config.pageSize),
+        refreshGates()
+    ])
+        .then(function(results) {
+            const records = results[0];
 
             records.forEach(function(record) {
                 normalizeBlueprintState(record);
             });
 
             renderDispatchedJobs(records);
+            showActiveTabGateModal();
         })
         .catch(function(error) {
             console.error("Failed to load dispatched jobs:", error);
@@ -634,7 +679,7 @@ function renderDispatchedJobs(records) {
 
         html += `
             <td>
-                ${renderBlueprintActions(record)}
+         ${renderTabActions(record, "dispatchedJobsTab")}
             </td>
         </tr>
         `;
@@ -1870,15 +1915,15 @@ function submitDuringAction() {
             activeDuringActionContext = null;
             showToast("Transition completed successfully.", "success");
 
+            /* Refresh lists immediately after a successful transition */
+            loadOngoingJobs();
+            loadBookingsToConfirm();
+            loadNotStartedJobs();
+            loadDispatchedJobs();
+
             if (afterAction === "openPrepSheet") openBookingPrepSheet(recordId);
             else if (afterAction === "openPlanning") openLabourPlanning(recordId);
             else if (afterAction === "openPrepSheetForNewRecord") openPrepSheetForNewRecord(recordId);
-            else {
-                loadOngoingJobs();
-                loadBookingsToConfirm();
-                loadNotStartedJobs();
-                loadDispatchedJobs();
-            }
         })
         .catch(function(error) {
             hideLoadingOverlay();
@@ -2178,11 +2223,13 @@ function formatCreatorDate(value) {
 /* =========================================================
    GENERIC INFORMATION MODAL
 ========================================================= */
-
-function showInfoModal(title, message) {
+let infoModalOnClose = null;
+function showInfoModal(title, message, onClose) {
     if (document.getElementById("infoModal")) {
         return;
     }
+
+    infoModalOnClose = onClose || null;
 
     const modal = document.createElement("div");
     modal.className = "during-action-modal";
@@ -2233,6 +2280,13 @@ function closeInfoModal() {
 
     if (modal) {
         modal.remove();
+
+        const callback = infoModalOnClose;
+        infoModalOnClose = null;
+
+        if (callback) {
+            callback();
+        }
     }
 }
 function updateConditionalDuringActionFields(modal) {

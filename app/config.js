@@ -4,21 +4,45 @@
 
 const CONFIG = {
 /* =========================================================
-   BLUEPRINT API
+   BLUEPRINT APIs
 ========================================================= */
 
-blueprintApi: {
-    apiName: "ExecuteJDBlueprintTransition",
-    publicKey: "BR6G6eas0mChymMtq4PEJknmb",
-    endpoint:  "https://www.zohoapis.com/creator/custom/taylorsolutions/ExecuteJDBlueprintTransition?publickey=BR6G6eas0mChymMtq4PEJknmb",
-    workspaceName: "taylorsolutions",
-    idParam: "JobID"  
-},
-bookingBlueprintApi: {
-    apiName: "ExecuteBookingsBpTransition",
-    publicKey: "swPEpVatzrvCB5sXXyMm52XJ3",
-    workspaceName: "taylorsolutions",
-     idParam: "BookingID"
+blueprintApis: {
+
+    production: {
+        jobStage: {
+            apiName: "ExecuteJDBlueprintTransition",
+            publicKey: "BR6G6eas0mChymMtq4PEJknmb",
+            workspaceName: "taylorsolutions",
+            idParam: "JobID"
+        },
+        booking: {
+            apiName: "ExecuteBookingsBpTransition",
+            publicKey: "swPEpVatzrvCB5sXXyMm52XJ3",
+            workspaceName: "taylorsolutions",
+            idParam: "BookingID"
+        }
+
+    },
+
+    development: {
+
+        jobStage: {
+            apiName: "ExecuteJDBlueprintTransition_Dev",
+            publicKey: "3xNDM1UVuHtzbhK8quzP2mFuk",
+            workspaceName: "taylorsolutions",
+            idParam: "JobID"
+        },
+
+        booking: {
+            apiName: "ExecuteBookingsBpTransition_Dev",
+            publicKey: "0kDtX8z5PDAC9OvK5EmBq0d5D",
+            workspaceName: "taylorsolutions",
+            idParam: "BookingID"
+        }
+
+    }
+
 },
     /* =====================================================
        CURRENT ONGOING JOBS
@@ -202,15 +226,30 @@ dispatchedJobs: {
         {label:"Job Stage",field:"Job_Stage"}
     ]
 },
+notStartedGate: {
+    enabled: true,
+    timezone: "Africa/Nairobi",
+    startHour: 9,
+    endHour: 13,
+    dateField: "Actual_Move_Date"
+},
+dispatchedGate: {
+    enabled: true,
+    timezone: "Africa/Nairobi",
+    startHour: 14,
+    endHour: 16,
+    dateField: "Move_Date"
+},
 ongoingJobsGate: {
     enabled: true,
     timezone: "Africa/Nairobi",
     startHour: 16,
     endHour: 8,
     reportName: "All_Jobs",
-    criteria: '(Status == "Ongoing")',
+    criteria: '(Job_Stage == "Ongoing")',
     adminEmails: [
         "sales@taylorea.com"
     ]
 },
+
 };

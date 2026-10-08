@@ -81,8 +81,46 @@ function updateCreatorRecord(reportName, recordId, data) {
 /* =========================================================
    GENERIC EXECUTE BLUEPRINT TRANSITION
 ========================================================= */
+
 function executeBlueprintTransition(apiKey, recordId, transitionName, blueprintType) {
-    const apiConfig = CONFIG[apiKey];
+
+    /*
+     * apiKey comes from BLUEPRINT_API_MAP.
+     *
+     * Example:
+     *   "blueprintApi"
+     *   "bookingBlueprintApi"
+     *
+     * Convert that logical key into the environment-specific
+     * API configuration.
+     */
+
+    let apiRole = null;
+
+    if (apiKey === "blueprintApi") {
+        apiRole = "jobStage";
+    }
+    else if (apiKey === "bookingBlueprintApi") {
+        apiRole = "booking";
+    }
+    else {
+        throw new Error(
+            "Unknown blueprint API key: " + apiKey
+        );
+    }
+
+    const apiConfig =
+        CONFIG.blueprintApis[CURRENT_ENVIRONMENT][apiRole];
+
+    if (!apiConfig) {
+        throw new Error(
+            "No blueprint API configuration found for environment '" +
+            CURRENT_ENVIRONMENT +
+            "' and API role '" +
+            apiRole +
+            "'."
+        );
+    }
 
     const payload = {
         TransitionName: transitionName,
@@ -100,8 +138,18 @@ function executeBlueprintTransition(apiKey, recordId, transitionName, blueprintT
         public_key: apiConfig.publicKey
     };
 
+    console.log("Executing blueprint transition:", {
+        environment: CURRENT_ENVIRONMENT,
+        apiRole: apiRole,
+        apiName: apiConfig.apiName,
+        recordId: recordId,
+        transitionName: transitionName,
+        blueprintType: blueprintType
+    });
+
     return ZOHO.CREATOR.API.invokeCustomApi(config)
         .then(function(response) {
+
             const result =
                 response && response.result
                     ? response.result

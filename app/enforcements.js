@@ -134,3 +134,147 @@ function hasPastBookings(records) {
         return record._bookingGroup === "Past";
     });
 }
+/* =========================================================
+   NOT STARTED JOBS GATE (09:00 - 13:00)
+   ---------------------------------------------------------
+   While any job exists in Not Started, every other tab is
+   inactionable. Applies to all users, all booking dates.
+========================================================= */
+
+let notStartedGateActive = false;
+
+function refreshNotStartedGate() {
+    const gateConfig = CONFIG.notStartedGate;
+
+    if (!gateConfig || gateConfig.enabled === false || !isWithinGateWindow(gateConfig)) {
+        notStartedGateActive = false;
+        return Promise.resolve(false);
+    }
+
+    const source = CONFIG.notStartedJobs;
+    const todayISO = getNairobiTodayISO();
+
+    return getAllReportRecords(source.reportName, source.criteria)
+        .then(function(records) {
+            return records.some(function(record) {
+                const rawDate = getDisplayValue(record, gateConfig.dateField);
+                const moveISO = parseCreatorDateToISO(rawDate);
+
+                if (!moveISO) {
+                    console.warn("Could not parse move date for Not Started gate:", rawDate, record.ID);
+                    return false;
+                }
+
+                return moveISO <= todayISO;
+            });
+        })
+        .catch(function(error) {
+            console.error("Failed to check Not Started jobs for gate:", error);
+            return false; /* fail open */
+        })
+        .then(function(active) {
+            notStartedGateActive = active;
+            return active;
+        });
+}
+function renderTabActions(record, tabId) {
+    if (notStartedGateActive && tabId !== "planApproveTab") {
+        return '<span class="gate-message">Update Not Started jobs to continue</span>';
+    }
+
+    if (dispatchedGateActive && tabId !== "dispatchedJobsTab") {
+        return '<span class="gate-message">Update Dispatched jobs to continue</span>';
+    }
+
+    return renderBlueprintActions(record);
+}
+
+function getActiveTabId() {
+    const active = document.querySelector(".tab-content.active");
+    return active ? active.id : null;
+}
+
+function showTabGateModalIfNeeded(tabId) {
+    if (notStartedGateActive && tabId !== "planApproveTab") {
+        showInfoModal(
+            "Not Started Jobs Require Attention",
+            "Ensure you update today's and past jobs in the Not Started tab to continue",
+            function() { activateTab("planApproveTab"); }
+        );
+        return;
+    }
+
+    if (dispatchedGateActive && tabId !== "dispatchedJobsTab") {
+        showInfoModal(
+            "Dispatched Jobs Require Attention",
+            "Ensure you update today's and past jobs in the dispatched stage",
+            function() { activateTab("dispatchedJobsTab"); }
+        );
+        return;
+    }
+
+    if (tabId === "confirmBookingsTab" && pastBookingsGateActive) {
+        showInfoModal(
+            "Past Bookings Require Attention",
+            "Kindly attend to the Past bookings to access new bookings."
+        );
+    }
+}
+
+function showActiveTabGateModal() {
+    showTabGateModalIfNeeded(getActiveTabId());
+}
+/* =========================================================
+   DISPATCHED JOBS GATE (14:00 - 16:00)
+   ---------------------------------------------------------
+   While any job exists in Dispatched, every other tab is
+   inactionable. Applies to all users, all booking dates.
+========================================================= */
+
+let dispatchedGateActive = false;
+
+function refreshDispatchedGate() {
+    const gateConfig = CONFIG.dispatchedGate;
+
+    if (!gateConfig || gateConfig.enabled === false || !isWithinGateWindow(gateConfig)) {
+        dispatchedGateActive = false;
+        return Promise.resolve(false);
+    }
+
+    const source = CONFIG.dispatchedJobs;
+    const todayISO = getNairobiTodayISO();
+
+    return getAllReportRecords(source.reportName, source.criteria)
+        .then(function(records) {
+            return records.some(function(record) {
+                const rawDate = getDisplayValue(record, gateConfig.dateField);
+                const moveISO = parseCreatorDateToISO(rawDate);
+
+                if (!moveISO) {
+                    console.warn("Could not parse move date for Dispatched gate:", rawDate, record.ID);
+                    return false;
+                }
+
+                return moveISO <= todayISO;
+            });
+        })
+        .catch(function(error) {
+            console.error("Failed to check Dispatched jobs for gate:", error);
+            return false; /* fail open */
+        })
+        .then(function(active) {
+            dispatchedGateActive = active;
+            return active;
+        });
+}
+
+function refreshGates() {
+    return Promise.all([
+        refreshNotStartedGate(),
+        refreshDispatchedGate()
+    ]);
+}
+
+function getGateState() {
+    return (notStartedGateActive ? "N" : "") + (dispatchedGateActive ? "D" : "");
+}
