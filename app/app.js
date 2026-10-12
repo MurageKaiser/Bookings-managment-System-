@@ -7,6 +7,21 @@
 ========================================================= */
 let pastBookingsGateActive = false;
 let activeDuringActionContext = null;
+let floatingTableScrollState = {
+    wrapper: null,
+    syncing: false,
+    resizeObserver: null
+};
+
+let floatingTableScrollbarListenersInitialized = false;
+
+function getFloatingTableScrollbar() {
+    return document.getElementById("floatingTableScrollbar");
+}
+
+function getFloatingTableScrollbarContent() {
+    return document.getElementById("floatingTableScrollbarContent");
+}
 let CURRENT_ENVIRONMENT = null;
 async function initializeEnvironment() {
 
@@ -35,6 +50,7 @@ ZOHO.CREATOR.init()
         return initializeEnvironment();
     })
     .then(function() {
+        initializeFloatingTableScrollbarListeners();
         initializeTabs();
         loadOngoingJobs();
         loadBookingsToConfirm();
@@ -53,12 +69,27 @@ ZOHO.CREATOR.init()
    TAB HANDLING
 ========================================================= */
 function activateTab(targetTab) {
+
     document.querySelectorAll(".tab-button").forEach(function(tabButton) {
-        tabButton.classList.toggle("active", tabButton.getAttribute("data-tab") === targetTab);
+        tabButton.classList.toggle(
+            "active",
+            tabButton.getAttribute("data-tab") === targetTab
+        );
     });
 
     document.querySelectorAll(".tab-content").forEach(function(tabContent) {
-        tabContent.classList.toggle("active", tabContent.id === targetTab);
+        tabContent.classList.toggle(
+            "active",
+            tabContent.id === targetTab
+        );
+    });
+
+    /*
+     * Give the browser a frame to apply the new tab's
+     * display state before measuring the table.
+     */
+    requestAnimationFrame(function() {
+        initializeFloatingTableScrollbar();
     });
 }
 
@@ -209,6 +240,7 @@ function renderOngoingJobs(records) {
     `;
 
     container.innerHTML = html;
+    initializeFloatingTableScrollbar();
 }
 
 
@@ -462,6 +494,7 @@ function renderBookingsToConfirm(records, ongoingGate, pastGate) {
     `;
 
     container.innerHTML = html;
+    initializeFloatingTableScrollbar();
 }
 
 
@@ -589,6 +622,7 @@ function renderNotStartedJobs(records) {
     `;
 
     container.innerHTML = html;
+    initializeFloatingTableScrollbar();
 }
 function loadDispatchedJobs() {
     const config = CONFIG.dispatchedJobs;
@@ -692,6 +726,7 @@ function renderDispatchedJobs(records) {
     `;
 
     container.innerHTML = html;
+    initializeFloatingTableScrollbar();
 }
 
 
@@ -2304,4 +2339,253 @@ function updateConditionalDuringActionFields(modal) {
             });
         }
     });
+}
+function initializeFloatingTableScrollbarListeners() {
+
+    if (floatingTableScrollbarListenersInitialized) {
+        return;
+    }
+
+    floatingTableScrollbarListenersInitialized = true;
+
+    window.addEventListener(
+        "scroll",
+        handleFloatingTableWindowScroll,
+        { passive: true }
+    );
+
+    window.addEventListener(
+        "resize",
+        handleFloatingTableWindowResize,
+        { passive: true }
+    );
+}
+
+function initializeFloatingTableScrollbar() {
+
+    const floatingScrollbar = getFloatingTableScrollbar();
+    const floatingContent = getFloatingTableScrollbarContent();
+
+    if (!floatingScrollbar || !floatingContent) {
+        return;
+    }
+
+    /*
+     * Remove listeners/observer associated with the
+     * previously active table.
+     */
+    if (floatingTableScrollState.resizeObserver) {
+        floatingTableScrollState.resizeObserver.disconnect();
+        floatingTableScrollState.resizeObserver = null;
+    }
+
+    const activeTab = document.querySelector(".tab-content.active");
+
+    if (!activeTab) {
+        hideFloatingTableScrollbar();
+        return;
+    }
+
+    const tableWrapper = activeTab.querySelector(".table-wrapper");
+
+    if (!tableWrapper) {
+        hideFloatingTableScrollbar();
+        return;
+    }
+
+    const table = tableWrapper.querySelector("table");
+
+    if (!table) {
+        hideFloatingTableScrollbar();
+        return;
+    }
+
+    floatingTableScrollState.wrapper = tableWrapper;
+
+    /*
+     * Make the floating scrollbar's scrollable content
+     * exactly as wide as the actual table.
+     */
+    syncFloatingTableScrollbar();
+
+    /*
+     * Floating scrollbar -> table
+     */
+    floatingScrollbar.onscroll = function() {
+
+        if (floatingTableScrollState.syncing) {
+            return;
+        }
+
+        floatingTableScrollState.syncing = true;
+
+        tableWrapper.scrollLeft = floatingScrollbar.scrollLeft;
+
+        floatingTableScrollState.syncing = false;
+    };
+
+    /*
+     * Table -> floating scrollbar
+     */
+    tableWrapper.onscroll = function() {
+
+        if (floatingTableScrollState.syncing) {
+            return;
+        }
+
+        floatingTableScrollState.syncing = true;
+
+        floatingScrollbar.scrollLeft = tableWrapper.scrollLeft;
+
+        floatingTableScrollState.syncing = false;
+    };
+
+    /*
+     * Keep the floating scrollbar dimensions synchronized
+     * when the table changes size.
+     */
+    if (typeof ResizeObserver !== "undefined") {
+
+        const observer = new ResizeObserver(function() {
+            syncFloatingTableScrollbar();
+        });
+
+        observer.observe(tableWrapper);
+        observer.observe(table);
+
+        floatingTableScrollState.resizeObserver = observer;
+    }
+
+    /*
+ * Recalculate when the browser/widget viewport changes.
+ */
+updateFloatingTableScrollbarVisibility();
+
+updateFloatingTableScrollbarPosition();
+}
+function syncFloatingTableScrollbar() {
+
+    const floatingScrollbar = getFloatingTableScrollbar();
+    const floatingContent = getFloatingTableScrollbarContent();
+    const tableWrapper = floatingTableScrollState.wrapper;
+
+    if (
+        !floatingScrollbar ||
+        !floatingContent ||
+        !tableWrapper
+    ) {
+        return;
+    }
+
+    const table = tableWrapper.querySelector("table");
+
+    if (!table) {
+        hideFloatingTableScrollbar();
+        return;
+    }
+
+    /*
+     * The floating scrollbar must have the same scrollable
+     * width as the actual table.
+     */
+    floatingContent.style.width = table.scrollWidth + "px";
+
+    /*
+     * Keep both scroll positions synchronized after
+     * a resize/re-render.
+     */
+    floatingScrollbar.scrollLeft = tableWrapper.scrollLeft;
+
+    updateFloatingTableScrollbarVisibility();
+}
+function updateFloatingTableScrollbarVisibility() {
+
+    const floatingScrollbar = getFloatingTableScrollbar();
+    const tableWrapper = floatingTableScrollState.wrapper;
+
+    if (!floatingScrollbar || !tableWrapper) {
+        return;
+    }
+
+    const hasHorizontalOverflow =
+        tableWrapper.scrollWidth > tableWrapper.clientWidth + 1;
+
+    if (!hasHorizontalOverflow) {
+        hideFloatingTableScrollbar();
+        return;
+    }
+
+    const rect = tableWrapper.getBoundingClientRect();
+
+    const viewportHeight =
+        window.innerHeight ||
+        document.documentElement.clientHeight;
+
+    /*
+     * If the table is completely above or below the viewport,
+     * there is nothing useful for the floating scrollbar to
+     * control.
+     */
+    const tableIsVisible =
+        rect.bottom > 0 &&
+        rect.top < viewportHeight;
+
+    if (!tableIsVisible) {
+        hideFloatingTableScrollbar();
+        return;
+    }
+
+    /*
+     * If the bottom of the table is currently visible, the
+     * native scrollbar is accessible, so the floating version
+     * isn't necessary.
+     */
+    const nativeScrollbarAccessible =
+        rect.bottom <= viewportHeight;
+
+    if (nativeScrollbarAccessible) {
+        hideFloatingTableScrollbar();
+    }
+    else {
+        floatingScrollbar.classList.add("visible");
+    }
+
+    updateFloatingTableScrollbarPosition();
+}
+function updateFloatingTableScrollbarPosition() {
+
+    const floatingScrollbar = getFloatingTableScrollbar();
+    const tableWrapper = floatingTableScrollState.wrapper;
+
+    if (!floatingScrollbar || !tableWrapper) {
+        return;
+    }
+
+    const rect = tableWrapper.getBoundingClientRect();
+
+    /*
+     * Keep the floating scrollbar aligned with the table's
+     * horizontal boundaries.
+     */
+    floatingScrollbar.style.left = rect.left + "px";
+    floatingScrollbar.style.width = rect.width + "px";
+    floatingScrollbar.style.right = "auto";
+}
+function hideFloatingTableScrollbar() {
+
+    const floatingScrollbar = getFloatingTableScrollbar();
+
+    if (!floatingScrollbar) {
+        return;
+    }
+
+    floatingScrollbar.classList.remove("visible");
+}
+function handleFloatingTableWindowScroll() {
+    updateFloatingTableScrollbarVisibility();
+}
+function handleFloatingTableWindowResize() {
+
+    syncFloatingTableScrollbar();
+    updateFloatingTableScrollbarPosition();
 }
